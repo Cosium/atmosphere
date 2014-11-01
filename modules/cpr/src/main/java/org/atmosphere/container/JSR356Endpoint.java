@@ -15,17 +15,15 @@
  */
 package org.atmosphere.container;
 
-import org.atmosphere.container.version.JSR356WebSocket;
-import org.atmosphere.cpr.ApplicationConfig;
-import org.atmosphere.cpr.AtmosphereFramework;
-import org.atmosphere.cpr.AtmosphereRequest;
-import org.atmosphere.cpr.AtmosphereResponse;
-import org.atmosphere.util.IOUtils;
-import org.atmosphere.websocket.WebSocket;
-import org.atmosphere.websocket.WebSocketEventListener;
-import org.atmosphere.websocket.WebSocketProcessor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.atmosphere.cpr.ApplicationConfig.ALLOW_QUERYSTRING_AS_REQUEST;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpSession;
 import javax.websocket.CloseReason;
@@ -34,18 +32,26 @@ import javax.websocket.EndpointConfig;
 import javax.websocket.MessageHandler;
 import javax.websocket.Session;
 import javax.websocket.server.HandshakeRequest;
-import java.io.IOException;
-import java.net.URI;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
-import static org.atmosphere.cpr.ApplicationConfig.ALLOW_QUERYSTRING_AS_REQUEST;
+import org.atmosphere.container.version.JSR356WebSocket;
+import org.atmosphere.cpr.ApplicationConfig;
+import org.atmosphere.cpr.AtmosphereFramework;
+import org.atmosphere.cpr.AtmosphereRequest;
+import org.atmosphere.cpr.AtmosphereRequest.Builder;
+import org.atmosphere.cpr.AtmosphereResponse;
+import org.atmosphere.util.IOUtils;
+import org.atmosphere.websocket.WebSocket;
+import org.atmosphere.websocket.WebSocketEventListener;
+import org.atmosphere.websocket.WebSocketProcessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JSR356Endpoint extends Endpoint {
 
     private static final Logger logger = LoggerFactory.getLogger(JSR356Endpoint.class);
+    
+    private final String websocketLocalAddressUserProperty = "javax.websocket.endpoint.localAddress";
+    private final String websocketRemoteAddressUserProperty = "javax.websocket.endpoint.remoteAddress";
 
     private final WebSocketProcessor webSocketProcessor;
     private final Integer maxBinaryBufferSize;
@@ -55,7 +61,7 @@ public class JSR356Endpoint extends Endpoint {
     private WebSocket webSocket;
     private final int webSocketWriteTimeout;
     private HandshakeRequest handshakeRequest;
-
+    
     public JSR356Endpoint(AtmosphereFramework framework, WebSocketProcessor webSocketProcessor) {
         this.framework = framework;
         this.webSocketProcessor = webSocketProcessor;
@@ -103,9 +109,15 @@ public class JSR356Endpoint extends Endpoint {
             return;
         }
 
-        if (maxBinaryBufferSize != -1) session.setMaxBinaryMessageBufferSize(maxBinaryBufferSize);
-        if (webSocketWriteTimeout != -1) session.setMaxIdleTimeout(webSocketWriteTimeout);
-        if (maxTextBufferSize != -1) session.setMaxTextMessageBufferSize(maxTextBufferSize);
+        if (maxBinaryBufferSize != -1) {
+			session.setMaxBinaryMessageBufferSize(maxBinaryBufferSize);
+		}
+        if (webSocketWriteTimeout != -1) {
+			session.setMaxIdleTimeout(webSocketWriteTimeout);
+		}
+        if (maxTextBufferSize != -1) {
+			session.setMaxTextMessageBufferSize(maxTextBufferSize);
+		}
 
         webSocket = new JSR356WebSocket(session, framework.getAtmosphereConfig());
 
@@ -172,8 +184,11 @@ public class JSR356Endpoint extends Endpoint {
                     requestUri = requestUri.replace("wss://", "https://");
                 }
             }
-
-            request = new AtmosphereRequest.Builder()
+            
+            InetSocketAddress localSocketAddr = (InetSocketAddress) endpointConfig.getUserProperties().get(websocketLocalAddressUserProperty);
+            InetSocketAddress remoteSocketAddr = (InetSocketAddress) endpointConfig.getUserProperties().get(websocketRemoteAddressUserProperty);
+            
+            Builder builder = new AtmosphereRequest.Builder()
                     .requestURI(requestUri)
                     .requestURL(requestUri)
                     .headers(headers)
@@ -181,8 +196,22 @@ public class JSR356Endpoint extends Endpoint {
                     .servletPath(servletPath)
                     .contextPath(framework.getServletContext().getContextPath())
                     .pathInfo(pathInfo)
-                    .userPrincipal(session.getUserPrincipal())
-                    .build()
+                    .userPrincipal(session.getUserPrincipal());
+            
+            if(localSocketAddr != null){
+            	builder.localAddr(localSocketAddr.getAddress() != null? localSocketAddr.getAddress().getHostAddress() : "");
+            	builder.localName(localSocketAddr.getHostName());
+            	builder.localPort(localSocketAddr.getPort());
+            }
+            
+            if(remoteSocketAddr != null){
+            	builder.remoteAddr(remoteSocketAddr.getAddress() != null? remoteSocketAddr.getAddress().getHostAddress() : "");
+            	builder.remoteHost(remoteSocketAddr.getHostName());
+            	builder.remotePort(remoteSocketAddr.getPort());
+            }
+            
+            request = builder
+            		.build()
                     .queryString(session.getQueryString());
 
 

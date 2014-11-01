@@ -15,26 +15,8 @@
  */
 package org.atmosphere.cpr;
 
-import org.atmosphere.util.FakeHttpSession;
-import org.atmosphere.util.QueryStringDecoder;
-import org.atmosphere.util.ReaderInputStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.atmosphere.cpr.HeaderConfig.X_ATMOSPHERE;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.DispatcherType;
-import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletInputStream;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-import javax.servlet.http.Part;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -60,7 +42,26 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.atmosphere.cpr.HeaderConfig.X_ATMOSPHERE;
+import javax.servlet.AsyncContext;
+import javax.servlet.DispatcherType;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.ServletInputStream;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import javax.servlet.http.Part;
+
+import org.atmosphere.util.FakeHttpSession;
+import org.atmosphere.util.QueryStringDecoder;
+import org.atmosphere.util.ReaderInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An Atmosphere request representation. An {@link AtmosphereRequest} is a two-way communication channel between the
@@ -88,7 +89,9 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
 
     private AtmosphereRequest(Builder b) {
         super(b.request == null ? new NoOpsRequest() : b.request);
-        if (b.request == null) b.request(new NoOpsRequest());
+        if (b.request == null) {
+			b.request(new NoOpsRequest());
+		}
 
         this.b = b;
     }
@@ -176,7 +179,9 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
                 q.append(e.getKey()).append("=").append(k).append("&");
             }
         }
-        if (q.length() > 0) q.deleteCharAt(q.length() - 1);
+        if (q.length() > 0) {
+			q.deleteCharAt(q.length() - 1);
+		}
         return q.toString();
     }
 
@@ -571,7 +576,9 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
      */
     public AtmosphereRequest queryString(String qs) {
 
-        if (qs == null) return this;
+        if (qs == null) {
+			return this;
+		}
 
         if (!qs.isEmpty()) {
             QueryStringDecoder decoder = new QueryStringDecoder(getRequestURI() + "?" + qs);
@@ -854,7 +861,7 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getRemoteAddr() {
-        return isNotNoOps() ? b.request.getRemoteAddr() : b.lazyRemote != null ? b.lazyRemote.getHostAddress() : b.remoteAddr;
+    	return b.remoteAddr != ""? b.remoteAddr : isNotNoOps() ? b.request.getRemoteAddr(): b.lazyRemote != null ? b.lazyRemote.getHostAddress() : "";
     }
 
     /**
@@ -862,7 +869,7 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getRemoteHost() {
-        return isNotNoOps() ? b.request.getRemoteHost() : b.lazyRemote != null ? b.lazyRemote.getHostName() : b.remoteHost;
+    	return b.remoteHost != ""? b.remoteHost : isNotNoOps() ? b.request.getRemoteHost(): b.lazyRemote != null ? b.lazyRemote.getHostName() : "";
     }
 
     /**
@@ -870,7 +877,7 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
      */
     @Override
     public int getRemotePort() {
-        return isNotNoOps() ? b.request.getRemotePort() : b.lazyRemote != null ? b.lazyRemote.getPort() : b.remotePort;
+    	return b.remotePort != 0? b.remotePort : isNotNoOps() ? b.request.getRemotePort(): b.lazyRemote != null ? b.lazyRemote.getPort() : 0;
     }
 
     /**
@@ -948,7 +955,7 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getLocalName() {
-        return isNotNoOps() ? b.request.getLocalName() : b.lazyLocal != null ? b.lazyLocal.getHostName() : b.localName;
+    	return b.localName != ""? b.localName : isNotNoOps() ? b.request.getLocalName(): b.lazyLocal != null ? b.lazyLocal.getHostName() : "";
     }
 
     /**
@@ -956,7 +963,7 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
      */
     @Override
     public int getLocalPort() {
-        return isNotNoOps() ? b.request.getLocalPort() : b.lazyLocal != null ? b.lazyLocal.getPort() : b.localPort;
+    	return b.localPort != 0? b.localPort : isNotNoOps() ? b.request.getLocalPort(): b.lazyLocal != null ? b.lazyLocal.getPort() : 0;
     }
 
     /**
@@ -964,7 +971,7 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
      */
     @Override
     public String getLocalAddr() {
-        return isNotNoOps() ? b.request.getLocalAddr() : b.lazyLocal != null ? b.lazyLocal.getHostAddress() : b.localAddr;
+    	return b.localAddr != ""? b.localAddr : isNotNoOps() ? b.request.getLocalAddr(): b.lazyLocal != null ? b.lazyLocal.getHostAddress() : "";
     }
 
     private boolean isNotNoOps() {
@@ -1068,7 +1075,9 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
     }
 
     public void destroy(boolean force) {
-        if (!force) return;
+        if (!force) {
+			return;
+		}
 
         b.localAttributes.clear();
         if (bis != null) {
@@ -1435,40 +1444,49 @@ public class AtmosphereRequest extends HttpServletRequestWrapper {
             this.innerStream = innerStream;
         }
 
-        public int read() throws java.io.IOException {
+        @Override
+		public int read() throws java.io.IOException {
             return innerStream.read();
         }
 
-        public int read(byte[] bytes) throws java.io.IOException {
+        @Override
+		public int read(byte[] bytes) throws java.io.IOException {
             return innerStream.read(bytes);
         }
 
-        public int read(byte[] bytes, int i, int i1) throws java.io.IOException {
+        @Override
+		public int read(byte[] bytes, int i, int i1) throws java.io.IOException {
             return innerStream.read(bytes, i, i1);
         }
 
 
-        public long skip(long l) throws java.io.IOException {
+        @Override
+		public long skip(long l) throws java.io.IOException {
             return innerStream.skip(l);
         }
 
-        public int available() throws java.io.IOException {
+        @Override
+		public int available() throws java.io.IOException {
             return innerStream.available();
         }
 
-        public void close() throws java.io.IOException {
+        @Override
+		public void close() throws java.io.IOException {
             innerStream.close();
         }
 
-        public synchronized void mark(int i) {
+        @Override
+		public synchronized void mark(int i) {
             innerStream.mark(i);
         }
 
-        public synchronized void reset() throws java.io.IOException {
+        @Override
+		public synchronized void reset() throws java.io.IOException {
             innerStream.reset();
         }
 
-        public boolean markSupported() {
+        @Override
+		public boolean markSupported() {
             return innerStream.markSupported();
         }
     }
